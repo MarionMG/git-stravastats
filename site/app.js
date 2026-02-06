@@ -9,8 +9,14 @@ const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const typeButtons = document.getElementById("typeButtons");
 const yearButtons = document.getElementById("yearButtons");
-const typeSelect = document.getElementById("typeSelect");
-const yearSelect = document.getElementById("yearSelect");
+const typeMenu = document.getElementById("typeMenu");
+const yearMenu = document.getElementById("yearMenu");
+const typeMenuButton = document.getElementById("typeMenuButton");
+const yearMenuButton = document.getElementById("yearMenuButton");
+const typeMenuLabel = document.getElementById("typeMenuLabel");
+const yearMenuLabel = document.getElementById("yearMenuLabel");
+const typeMenuOptions = document.getElementById("typeMenuOptions");
+const yearMenuOptions = document.getElementById("yearMenuOptions");
 const heatmaps = document.getElementById("heatmaps");
 const stats = document.getElementById("stats");
 const tooltip = document.getElementById("tooltip");
@@ -179,6 +185,13 @@ function getColors(type) {
 
 function displayType(type) {
   return TYPE_META[type]?.label || prettifyType(type);
+}
+
+function formatActivitiesTitle(types) {
+  if (!types || !types.length) {
+    return "Activities";
+  }
+  return `${types.map((type) => displayType(type)).join(" + ")} Activities`;
 }
 
 function fallbackColor(type) {
@@ -521,7 +534,7 @@ function buildCard(type, year, aggregates, units, options = {}) {
   return card;
 }
 
-function buildEmptyYearCard(type, year) {
+function buildEmptyYearCard(type, year, labelOverride) {
   const card = document.createElement("div");
   card.className = "card card-empty-year";
 
@@ -543,7 +556,8 @@ function buildEmptyYearCard(type, year) {
 
   const message = document.createElement("span");
   message.className = "year-empty-message";
-  message.textContent = `no ${displayType(type).toLowerCase()} activities`;
+  const label = labelOverride || displayType(type);
+  message.textContent = `no ${String(label).toLowerCase()} activities`;
   placeholder.appendChild(message);
 
   row.appendChild(placeholder);
@@ -1261,7 +1275,7 @@ async function init() {
   }
 
   const typeOptions = [
-    { value: "all", label: "All Workouts" },
+    { value: "all", label: "All Activities" },
     ...payload.types.map((type) => ({ value: type, label: displayType(type) })),
   ];
 
@@ -1279,14 +1293,39 @@ async function init() {
     });
   }
 
-  function renderSelect(select, options) {
-    if (!select) return;
-    select.innerHTML = "";
+  function renderMenuOptions(container, options, selectedValues, isAllSelected, onSelect, normalizeValue) {
+    if (!container) return;
+    container.innerHTML = "";
     options.forEach((option) => {
-      const opt = document.createElement("option");
-      opt.value = option.value;
-      opt.textContent = option.label;
-      select.appendChild(opt);
+      const rawValue = String(option.value);
+      const normalized = normalizeValue ? normalizeValue(rawValue) : rawValue;
+      const isActive = rawValue === "all"
+        ? isAllSelected
+        : (!isAllSelected && selectedValues.has(normalized));
+
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "filter-menu-option";
+      if (isActive) {
+        row.classList.add("active");
+      }
+      row.dataset.value = rawValue;
+
+      const label = document.createElement("span");
+      label.className = "filter-menu-option-label";
+      label.textContent = option.label;
+
+      const check = document.createElement("input");
+      check.type = "checkbox";
+      check.className = "filter-menu-check";
+      check.checked = isActive;
+      check.tabIndex = -1;
+      check.setAttribute("aria-hidden", "true");
+
+      row.appendChild(label);
+      row.appendChild(check);
+      row.addEventListener("click", () => onSelect(rawValue));
+      container.appendChild(row);
     });
   }
 
@@ -1377,21 +1416,31 @@ async function init() {
     selectedYears.add(year);
   }
 
-  function getTypeSelectValue() {
-    if (areAllTypesSelected()) return "all";
-    if (selectedTypes.size === 1) {
-      return payload.types.find((type) => selectedTypes.has(type)) || "all";
-    }
-    return "all";
+  function getTypeMenuText(types, allTypesSelected) {
+    if (allTypesSelected) return "All Activities";
+    if (types.length > 1) return "Multiple Activities";
+    if (types.length === 1) return `${displayType(types[0])} Activities`;
+    return "All Activities";
   }
 
-  function getYearSelectValue(visibleYears) {
-    if (areAllYearsSelected()) return "all";
-    if (selectedYears.size === 1) {
-      const year = Array.from(selectedYears)[0];
-      return visibleYears.includes(year) ? String(year) : "all";
+  function getYearMenuText(years, allYearsSelected) {
+    if (allYearsSelected) return "All Years";
+    if (years.length > 1) return "Multiple Years Selected";
+    if (years.length === 1) return String(years[0]);
+    return "All Years";
+  }
+
+  function setMenuLabel(labelEl, text) {
+    if (!labelEl) return;
+    labelEl.textContent = text;
+  }
+
+  function setMenuOpen(menuEl, buttonEl, isOpen) {
+    if (!menuEl) return;
+    menuEl.classList.toggle("open", isOpen);
+    if (buttonEl) {
+      buttonEl.setAttribute("aria-expanded", isOpen ? "true" : "false");
     }
-    return "all";
   }
 
   function update() {
@@ -1419,7 +1468,27 @@ async function init() {
       toggleYear(value);
       update();
     });
-    renderSelect(yearSelect, yearOptions);
+    renderMenuOptions(
+      typeMenuOptions,
+      typeOptions,
+      selectedTypes,
+      allTypesSelected,
+      (value) => {
+        toggleType(value);
+        update();
+      },
+    );
+    renderMenuOptions(
+      yearMenuOptions,
+      yearOptions,
+      selectedYears,
+      allYearsSelected,
+      (value) => {
+        toggleYear(value);
+        update();
+      },
+      (v) => Number(v),
+    );
     const years = selectedYearsList(visibleYears);
     if (!years.length) {
       allYearsMode = true;
@@ -1432,8 +1501,8 @@ async function init() {
 
     updateButtonState(typeButtons, selectedTypes, allTypesSelected);
     updateButtonState(yearButtons, selectedYears, allYearsSelected, (v) => Number(v));
-    if (typeSelect) typeSelect.value = getTypeSelectValue();
-    if (yearSelect) yearSelect.value = getYearSelectValue(visibleYears);
+    setMenuLabel(typeMenuLabel, getTypeMenuText(types, allTypesSelected));
+    setMenuLabel(yearMenuLabel, getYearMenuText(years, allYearsSelected));
 
     if (heatmaps) {
       heatmaps.innerHTML = "";
@@ -1443,16 +1512,22 @@ async function init() {
         section.className = "type-section";
         const header = document.createElement("div");
         header.className = "type-header";
-        header.textContent = allTypesSelected ? "All Workouts" : "Selected Workouts";
+        header.textContent = allTypesSelected ? "All Activities" : formatActivitiesTitle(types);
         section.appendChild(header);
         const list = document.createElement("div");
         list.className = "type-list";
+        const yearTotals = getTypesYearTotals(payload, types, years);
+        const cardYears = allYearsSelected
+          ? trimOldestEmptyYears(years, yearTotals)
+          : years.slice();
+        const emptyLabel = types.map((type) => displayType(type)).join(" + ");
         if (showMoreStats) {
-          list.appendChild(buildStatsOverview(payload, types, years, frequencyColor));
+          list.appendChild(buildStatsOverview(payload, types, cardYears, frequencyColor));
         }
-        years.forEach((year) => {
+        cardYears.forEach((year) => {
           const yearData = payload.aggregates?.[String(year)] || {};
           const aggregates = combineYearAggregates(yearData, types);
+          const total = yearTotals.get(year) || 0;
           const colorForEntry = (entry) => {
             if (!entry.types || entry.types.length === 0) {
               return DEFAULT_COLORS[0];
@@ -1462,13 +1537,15 @@ async function init() {
             }
             return MULTI_TYPE_COLOR;
           };
-          const card = buildCard(
-            "all",
-            year,
-            aggregates,
-            payload.units || { distance: "mi", elevation: "ft" },
-            { colorForEntry },
-          );
+          const card = total > 0
+            ? buildCard(
+              "all",
+              year,
+              aggregates,
+              payload.units || { distance: "mi", elevation: "ft" },
+              { colorForEntry },
+            )
+            : buildEmptyYearCard("all", year, emptyLabel);
           list.appendChild(card);
         });
         section.appendChild(list);
@@ -1479,7 +1556,7 @@ async function init() {
           section.className = "type-section";
           const header = document.createElement("div");
           header.className = "type-header";
-          header.textContent = displayType(type);
+          header.textContent = formatActivitiesTitle([type]);
           section.appendChild(header);
 
           const list = document.createElement("div");
@@ -1520,20 +1597,32 @@ async function init() {
     toggleType(value);
     update();
   });
-  renderSelect(typeSelect, typeOptions);
+  if (typeMenuButton) {
+    typeMenuButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const open = !typeMenu?.classList.contains("open");
+      setMenuOpen(typeMenu, typeMenuButton, open);
+      setMenuOpen(yearMenu, yearMenuButton, false);
+    });
+  }
+  if (yearMenuButton) {
+    yearMenuButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const open = !yearMenu?.classList.contains("open");
+      setMenuOpen(yearMenu, yearMenuButton, open);
+      setMenuOpen(typeMenu, typeMenuButton, false);
+    });
+  }
 
-  if (typeSelect) {
-    typeSelect.addEventListener("change", () => {
-      toggleType(typeSelect.value);
-      update();
-    });
-  }
-  if (yearSelect) {
-    yearSelect.addEventListener("change", () => {
-      toggleYear(yearSelect.value);
-      update();
-    });
-  }
+  document.addEventListener("pointerdown", (event) => {
+    const target = event.target;
+    if (typeMenu && !typeMenu.contains(target)) {
+      setMenuOpen(typeMenu, typeMenuButton, false);
+    }
+    if (yearMenu && !yearMenu.contains(target)) {
+      setMenuOpen(yearMenu, yearMenuButton, false);
+    }
+  });
   update();
 
   window.addEventListener("resize", () => {

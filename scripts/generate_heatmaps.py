@@ -38,6 +38,9 @@ YEAR_LABEL_COLOR = "#e5e7eb"
 LABEL_COLOR = "#f1f5f9"
 BG_COLOR = "#0f172a"
 GRID_BG_COLOR = "rgba(15, 23, 42, 0.8)"
+CARD_BG_COLOR = "rgba(255, 255, 255, 0.06)"
+CARD_BORDER_COLOR = "rgba(148, 163, 184, 0.2)"
+CARD_RADIUS = 14
 ALL_WORKOUTS_ACCENT = "#b967ff"
 LABEL_FONT = "JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
 
@@ -193,6 +196,8 @@ def _svg_for_year(
     units: Dict[str, str],
     colors: List[str],
     color_for_entry: Optional[Callable[[Dict], str]] = None,
+    card_fill: Optional[str] = None,
+    card_stroke: Optional[str] = None,
 ) -> str:
     start = _sunday_on_or_before(date(year, 1, 1))
     end = _saturday_on_or_after(date(year, 12, 31))
@@ -224,6 +229,12 @@ def _svg_for_year(
     lines.append(
         f'<rect width="{width}" height="{height}" fill="{BG_COLOR}"/>'
     )
+    if card_fill:
+        stroke_attr = f' stroke="{card_stroke}"' if card_stroke else ""
+        lines.append(
+            f'<rect width="{width}" height="{height}" rx="{CARD_RADIUS}" ry="{CARD_RADIUS}" '
+            f'fill="{card_fill}"{stroke_attr}/>'
+        )
     lines.append(
         f'<rect x="{grid_bg_x}" y="{grid_bg_y}" width="{grid_width}" height="{grid_height}" '
         f'rx="12" ry="12" fill="{GRID_BG_COLOR}"/>'
@@ -407,6 +418,8 @@ def generate():
         units,
         _color_scale(ALL_WORKOUTS_ACCENT),
         color_for_entry=lambda entry: _all_workouts_preview_color(entry, type_meta),
+        card_fill=CARD_BG_COLOR,
+        card_stroke=CARD_BORDER_COLOR,
     )
     with open(os.path.join(preview_dir, f"{README_PREVIEW_YEAR}.svg"), "w", encoding="utf-8") as f:
         f.write(preview_svg)
