@@ -246,8 +246,11 @@ def _start_after_ts(config: Dict) -> int:
     if start_date:
         dt = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
         return int(dt.timestamp())
-    lookback_years = int(sync_cfg.get("lookback_years", 5))
-    return _lookback_after_ts(lookback_years)
+    lookback_years = sync_cfg.get("lookback_years")
+    if lookback_years in (None, ""):
+        # Default: no lower bound, so Strava backfill can reach all available history.
+        return 0
+    return _lookback_after_ts(int(lookback_years))
 
 
 def _activity_start_ts(activity: Dict) -> Optional[int]:
@@ -532,6 +535,15 @@ def sync_strava(dry_run: bool, prune_deleted: bool) -> Dict:
     skip_backfill = False
 
     state = _load_state() if resume_backfill and not dry_run else {}
+    if state:
+        state_after = state.get("after")
+        try:
+            state_after = int(state_after)
+        except (TypeError, ValueError):
+            state_after = None
+        if state_after != after:
+            print("Backfill boundary changed; restarting cursor.")
+            state = {}
     if state and state.get("completed"):
         skip_backfill = True
     elif state and state.get("after") == after and state.get("next_before") is not None:

@@ -36,7 +36,7 @@ STROKE_COLOR = "#0f172a"
 ALL_WORKOUTS_ACCENT = "#b967ff"
 
 
-def _year_range_from_config(config: Dict) -> List[int]:
+def _year_range_from_config(config: Dict, aggregate_years: Dict) -> List[int]:
     sync_cfg = config.get("sync", {})
     current_year = utc_now().year
     start_date = sync_cfg.get("start_date")
@@ -46,8 +46,17 @@ def _year_range_from_config(config: Dict) -> List[int]:
         except (ValueError, IndexError):
             start_year = current_year
     else:
-        lookback_years = int(sync_cfg.get("lookback_years", 5))
-        start_year = current_year - lookback_years + 1
+        lookback_years = sync_cfg.get("lookback_years")
+        if lookback_years not in (None, ""):
+            start_year = current_year - int(lookback_years) + 1
+        else:
+            data_years: List[int] = []
+            for raw_year in (aggregate_years or {}).keys():
+                try:
+                    data_years.append(int(raw_year))
+                except (TypeError, ValueError):
+                    continue
+            start_year = min(data_years) if data_years else current_year
     return list(range(start_year, current_year + 1))
 
 
@@ -343,7 +352,7 @@ def generate():
         activity_type: _color_scale(type_meta.get(activity_type, {}).get("accent", DEFAULT_COLORS[4]))
         for activity_type in types
     }
-    years = _year_range_from_config(config)
+    years = _year_range_from_config(config, aggregate_years)
 
     for activity_type in types:
         type_dir = os.path.join("heatmaps", activity_type)

@@ -97,8 +97,8 @@ Everything in this section is optional. Defaults work without changes.
 Base settings live in `config.yaml`.
 
 Key options:
-- `sync.start_date` (default `2019-01-01`; currently set and overrides `sync.lookback_years`)
-- `sync.lookback_years` (default 5; used only when `sync.start_date` is unset)
+- `sync.start_date` (optional `YYYY-MM-DD` lower bound for history)
+- `sync.lookback_years` (optional rolling lower bound; used only when `sync.start_date` is unset)
 - `sync.recent_days` (sync recent activities even while backfilling)
 - `sync.resume_backfill` (persist cursor to continue older pages across days)
 - `activities.types` (featured activity types shown first in UI)
@@ -114,6 +114,7 @@ Key options:
 ## Notes
 
 - Raw activities are stored locally for processing but are not committed (`activities/raw/` is ignored). This prevents publishing detailed per‑activity payloads and gps location traces.
+- If neither `sync.start_date` nor `sync.lookback_years` is set, sync backfills all available Strava history.
 - On first run for a new athlete, the workflow auto-resets persisted outputs (`data/*.json`, `heatmaps/`, `site/data.json`) to avoid mixing data across forks. A fingerprint-only file is stored at `data/athletes.json` and does not include athlete IDs or profile data.
 - The sync script rate-limits to free Strava API caps (200 overall / 15 min, 2,000 overall daily; 100 read / 15 min, 1,000 read daily). The cursor is stored in `data/backfill_state.json` and resumes automatically. Once backfill is complete, only the recent sync runs.
 - The GitHub Pages site is optimized for responsive desktop/mobile viewing.
