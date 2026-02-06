@@ -313,6 +313,7 @@
         --label-row-height: calc(var(--cell) * 1.2);
         --label-gap: 0px;
         --label-gap-rotated: 10px;
+        --more-stats-x-label-shift: -2px;
         display: grid;
         grid-template-columns: max-content minmax(180px, 1fr);
         grid-template-rows: auto 1fr;
@@ -524,6 +525,10 @@
 
       .more-stats .axis-label.diagonal {
         transform: translateX(var(--axis-label-shift)) rotate(-45deg) translateY(-4px);
+      }
+
+      .more-stats .axis-grid > .axis-label:not(.y):not(.empty) {
+        --axis-label-shift: var(--more-stats-x-label-shift);
       }
 
       .more-stats .axis-label.x.diagonal {
