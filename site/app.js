@@ -1324,9 +1324,25 @@ async function init() {
 
       row.appendChild(label);
       row.appendChild(check);
+      row.addEventListener("pointerdown", (event) => {
+        event.stopPropagation();
+      });
       row.addEventListener("click", () => onSelect(rawValue));
       container.appendChild(row);
     });
+  }
+
+  function renderMenuDoneButton(container, onDone) {
+    if (!container) return;
+    const done = document.createElement("button");
+    done.type = "button";
+    done.className = "filter-menu-done";
+    done.textContent = "Done";
+    done.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+    });
+    done.addEventListener("click", () => onDone());
+    container.appendChild(done);
   }
 
   let resizeTimer = null;
@@ -1443,7 +1459,9 @@ async function init() {
     }
   }
 
-  function update() {
+  function update(options = {}) {
+    const keepTypeMenuOpen = Boolean(options.keepTypeMenuOpen);
+    const keepYearMenuOpen = Boolean(options.keepYearMenuOpen);
     const allTypesSelected = areAllTypesSelected();
     const types = selectedTypesList();
     const visibleYears = getVisibleYearsForTypes(payload, types, payload.years, allTypesSelected);
@@ -1475,9 +1493,12 @@ async function init() {
       allTypesSelected,
       (value) => {
         toggleType(value);
-        update();
+        update({ keepTypeMenuOpen: true });
       },
     );
+    renderMenuDoneButton(typeMenuOptions, () => {
+      setMenuOpen(typeMenu, typeMenuButton, false);
+    });
     renderMenuOptions(
       yearMenuOptions,
       yearOptions,
@@ -1485,10 +1506,13 @@ async function init() {
       allYearsSelected,
       (value) => {
         toggleYear(value);
-        update();
+        update({ keepYearMenuOpen: true });
       },
       (v) => Number(v),
     );
+    renderMenuDoneButton(yearMenuOptions, () => {
+      setMenuOpen(yearMenu, yearMenuButton, false);
+    });
     const years = selectedYearsList(visibleYears);
     if (!years.length) {
       allYearsMode = true;
@@ -1498,11 +1522,18 @@ async function init() {
     years.sort((a, b) => b - a);
     const frequencyColor = getFrequencyColor(types, allYearsSelected);
     const showCombinedTypes = types.length > 1;
+    const allAvailableTypesSelected = types.length === payload.types.length;
 
     updateButtonState(typeButtons, selectedTypes, allTypesSelected);
     updateButtonState(yearButtons, selectedYears, allYearsSelected, (v) => Number(v));
     setMenuLabel(typeMenuLabel, getTypeMenuText(types, allTypesSelected));
     setMenuLabel(yearMenuLabel, getYearMenuText(years, allYearsSelected));
+    if (keepTypeMenuOpen) {
+      setMenuOpen(typeMenu, typeMenuButton, true);
+    }
+    if (keepYearMenuOpen) {
+      setMenuOpen(yearMenu, yearMenuButton, true);
+    }
 
     if (heatmaps) {
       heatmaps.innerHTML = "";
@@ -1512,7 +1543,7 @@ async function init() {
         section.className = "type-section";
         const header = document.createElement("div");
         header.className = "type-header";
-        header.textContent = allTypesSelected ? "All Activities" : formatActivitiesTitle(types);
+        header.textContent = allAvailableTypesSelected ? "All Activities" : formatActivitiesTitle(types);
         section.appendChild(header);
         const list = document.createElement("div");
         list.className = "type-list";
