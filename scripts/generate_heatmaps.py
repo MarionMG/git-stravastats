@@ -24,16 +24,22 @@ README_PREVIEW_YEAR = 2025
 
 CELL = 12
 GAP = 2
-PADDING = 16
-LABEL_LEFT = 36
-LABEL_TOP = 20
+OUTER_PAD = 16
+AXIS_WIDTH = 36
+AXIS_GAP = 8
+LABEL_ROW_HEIGHT = 18
+GRID_PAD_TOP = 6
+GRID_PAD_RIGHT = 4
+GRID_PAD_BOTTOM = 6
+GRID_PAD_LEFT = 6
 
 DEFAULT_COLORS = ["#1f2937", "#1f2937", "#1f2937", "#1f2937", "#1f2937"]
-LABEL_COLOR = "#cbd5e1"
-TEXT_COLOR = "#e5e7eb"
+YEAR_LABEL_COLOR = "#e5e7eb"
+LABEL_COLOR = "#f1f5f9"
 BG_COLOR = "#0f172a"
-STROKE_COLOR = "#0f172a"
+GRID_BG_COLOR = "rgba(15, 23, 42, 0.8)"
 ALL_WORKOUTS_ACCENT = "#b967ff"
+LABEL_FONT = "JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
 
 
 def _year_range_from_config(config: Dict, aggregate_years: Dict) -> List[int]:
@@ -192,11 +198,23 @@ def _svg_for_year(
     end = _saturday_on_or_after(date(year, 12, 31))
 
     weeks = ((end - start).days // 7) + 1
-    width = weeks * (CELL + GAP) + PADDING * 2 + LABEL_LEFT
-    height = 7 * (CELL + GAP) + PADDING * 2 + LABEL_TOP
+    grid_rows = 7
+    grid_inner_width = weeks * CELL + (weeks - 1) * GAP
+    grid_inner_height = grid_rows * CELL + (grid_rows - 1) * GAP
+    grid_width = GRID_PAD_LEFT + grid_inner_width + GRID_PAD_RIGHT
+    grid_height = GRID_PAD_TOP + grid_inner_height + GRID_PAD_BOTTOM
 
-    grid_x = PADDING + LABEL_LEFT
-    grid_y = PADDING + LABEL_TOP
+    width = OUTER_PAD * 2 + AXIS_WIDTH + AXIS_GAP + grid_width
+    height = OUTER_PAD * 2 + LABEL_ROW_HEIGHT + grid_height
+
+    heatmap_x = OUTER_PAD
+    heatmap_y = OUTER_PAD
+    month_row_x = heatmap_x + AXIS_WIDTH + AXIS_GAP + GRID_PAD_LEFT
+    month_row_y = heatmap_y
+    day_col_x = heatmap_x + AXIS_WIDTH
+    day_col_y = heatmap_y + LABEL_ROW_HEIGHT + GRID_PAD_TOP
+    grid_bg_x = heatmap_x + AXIS_WIDTH + AXIS_GAP
+    grid_bg_y = heatmap_y + LABEL_ROW_HEIGHT
 
     lines = []
     lines.append('<?xml version="1.0" encoding="UTF-8"?>')
@@ -207,27 +225,36 @@ def _svg_for_year(
         f'<rect width="{width}" height="{height}" fill="{BG_COLOR}"/>'
     )
     lines.append(
-        f'<text x="{PADDING}" y="{PADDING + 12}" font-size="12" fill="{TEXT_COLOR}" font-family="Arial, sans-serif">{year}</text>'
+        f'<rect x="{grid_bg_x}" y="{grid_bg_y}" width="{grid_width}" height="{grid_height}" '
+        f'rx="12" ry="12" fill="{GRID_BG_COLOR}"/>'
+    )
+    lines.append(
+        f'<text x="{heatmap_x}" y="{heatmap_y + LABEL_ROW_HEIGHT - 2}" font-size="12" '
+        f'fill="{YEAR_LABEL_COLOR}" font-family="{LABEL_FONT}">{year}</text>'
     )
 
     month_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     for month in range(1, 13):
         first_day = date(year, month, 1)
         week_index = (first_day - start).days // 7
-        x = grid_x + week_index * (CELL + GAP)
+        x = month_row_x + week_index * (CELL + GAP)
         lines.append(
-            f'<text x="{x}" y="{PADDING + 12}" font-size="10" fill="{LABEL_COLOR}" font-family="Arial, sans-serif">{month_labels[month - 1]}</text>'
+            f'<text x="{x}" y="{month_row_y + 2}" font-size="10" fill="{LABEL_COLOR}" '
+            f'font-family="{LABEL_FONT}" dominant-baseline="hanging">{month_labels[month - 1]}</text>'
         )
 
     day_labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     for row, label in enumerate(day_labels):
-        y = grid_y + row * (CELL + GAP) + CELL - 2
-        x = PADDING + LABEL_LEFT - 6
+        y = day_col_y + row * (CELL + GAP) + (CELL / 2)
+        x = day_col_x
         lines.append(
-            f'<text x="{x}" y="{y}" font-size="9" fill="{LABEL_COLOR}" font-family="Arial, sans-serif" text-anchor="end">{label}</text>'
+            f'<text x="{x}" y="{y}" font-size="10" fill="{LABEL_COLOR}" font-family="{LABEL_FONT}" '
+            f'text-anchor="end" dominant-baseline="middle">{label}</text>'
         )
 
-    lines.append(f'<g transform="translate({grid_x},{grid_y})">')
+    lines.append(
+        f'<g transform="translate({month_row_x},{day_col_y})">'
+    )
 
     current = start
     while current <= end:
@@ -255,18 +282,16 @@ def _svg_for_year(
                 color = colors[level]
             title = _build_title(date_str, entry, units)
         else:
-            color = BG_COLOR
-            title = None
+            current += timedelta(days=1)
+            continue
 
-        rect = (
-            f'<rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" '
-            f'fill="{color}" stroke="{STROKE_COLOR}" stroke-width="1"/>'
+        rect_attrs = (
+            f'x="{x}" y="{y}" width="{CELL}" height="{CELL}" '
+            f'rx="3" ry="3" fill="{color}"'
         )
-
-        if title:
-            rect = rect[:-2] + f' data-date="{date_str}"><title>{title}</title></rect>'
-
-        lines.append(rect)
+        lines.append(
+            f'<rect {rect_attrs} data-date="{date_str}"><title>{title}</title></rect>'
+        )
         current += timedelta(days=1)
 
     lines.append("</g>")
