@@ -72,6 +72,114 @@ function getLayout(scope) {
   };
 }
 
+function resetStackedStatsOffset(statsColumn) {
+  if (!statsColumn) return;
+  statsColumn.style.marginLeft = "";
+  statsColumn.style.maxWidth = "";
+}
+
+let textMeasureProbe = null;
+
+function ensureTextMeasureProbe() {
+  if (textMeasureProbe && textMeasureProbe.isConnected) {
+    return textMeasureProbe;
+  }
+  const probe = document.createElement("span");
+  probe.setAttribute("aria-hidden", "true");
+  probe.style.position = "fixed";
+  probe.style.visibility = "hidden";
+  probe.style.pointerEvents = "none";
+  probe.style.whiteSpace = "pre";
+  probe.style.left = "-9999px";
+  probe.style.top = "0";
+  document.body.appendChild(probe);
+  textMeasureProbe = probe;
+  return probe;
+}
+
+function getRenderedTextLeft(el) {
+  if (!el) return 0;
+  const rect = el.getBoundingClientRect();
+  const style = window.getComputedStyle(el);
+  const rawText = (el.textContent || "").trim();
+  if (!rawText) return rect.left;
+
+  const probe = ensureTextMeasureProbe();
+  probe.style.font = style.font;
+  probe.style.letterSpacing = style.letterSpacing;
+  probe.style.fontKerning = style.fontKerning;
+  probe.style.fontVariant = style.fontVariant;
+  probe.style.fontFeatureSettings = style.fontFeatureSettings;
+  probe.style.fontVariationSettings = style.fontVariationSettings;
+  probe.textContent = rawText;
+  const textWidth = probe.getBoundingClientRect().width;
+
+  const padLeft = parseFloat(style.paddingLeft) || 0;
+  const padRight = parseFloat(style.paddingRight) || 0;
+  const contentLeft = rect.left + padLeft;
+  const contentRight = rect.right - padRight;
+  const contentWidth = Math.max(0, contentRight - contentLeft);
+  const align = style.textAlign;
+
+  if (align === "right" || align === "end") {
+    return contentRight - textWidth;
+  }
+  if (align === "center" || align === "-webkit-center") {
+    return contentLeft + (contentWidth - textWidth) / 2;
+  }
+  return contentLeft;
+}
+
+function applyStackedStatsOffset(statsColumn, anchorLabel) {
+  if (!statsColumn || !anchorLabel) return;
+
+  // Measure the real rendered left edge of the label text against a zero-offset stats column.
+  statsColumn.style.marginLeft = "0px";
+  statsColumn.style.maxWidth = "100%";
+  const baseLeft = statsColumn.getBoundingClientRect().left;
+  const labelLeft = getRenderedTextLeft(anchorLabel);
+  const offset = Math.max(0, labelLeft - baseLeft);
+
+  statsColumn.style.marginLeft = `${offset}px`;
+  statsColumn.style.maxWidth = `calc(100% - ${offset}px)`;
+}
+
+function alignStackedStatsToYAxisLabels() {
+  if (!heatmaps) return;
+
+  heatmaps.querySelectorAll(".year-card").forEach((card) => {
+    const heatmapArea = card.querySelector(".heatmap-area");
+    const statsColumn = card.querySelector(".card-stats.side-stats-column");
+    const anchorLabel = card.querySelector(".day-col .day-label");
+    if (!heatmapArea || !statsColumn || !anchorLabel) return;
+
+    const heatmapTop = heatmapArea.getBoundingClientRect().top;
+    const statsTop = statsColumn.getBoundingClientRect().top;
+    const isStacked = statsTop > heatmapTop + 1;
+    if (!isStacked) {
+      resetStackedStatsOffset(statsColumn);
+      return;
+    }
+    applyStackedStatsOffset(statsColumn, anchorLabel);
+  });
+
+  heatmaps.querySelectorAll(".more-stats").forEach((card) => {
+    const graphBody = card.querySelector(".more-stats-body");
+    const statsColumn = card.querySelector(".more-stats-facts.side-stats-column");
+    const anchorLabel = card.querySelector(".axis-day-col .day-label");
+    if (!graphBody || !statsColumn || !anchorLabel) return;
+
+    const graphTop = graphBody.getBoundingClientRect().top;
+    const statsTop = statsColumn.getBoundingClientRect().top;
+    const isStacked = statsTop > graphTop + 1;
+    if (!isStacked) {
+      resetStackedStatsOffset(statsColumn);
+      return;
+    }
+    applyStackedStatsOffset(statsColumn, anchorLabel);
+  });
+}
+
 function sundayOnOrBefore(d) {
   const day = d.getDay();
   const offset = day % 7; // Sunday=0
@@ -261,7 +369,7 @@ function formatHourLabel(hour) {
   return `${hour12}${suffix}`;
 }
 
-function buildSummary(payload, types, years, showTypeBreakdown, showActiveDays, hideDistanceElevation) {
+function buildSummary(payload, types, years, showTypeBreakdown, showActiveDays, hideDistanceElevation, onTypeCardSelect) {
   summary.innerHTML = "";
 
   const totals = {
@@ -294,7 +402,7 @@ function buildSummary(payload, types, years, showTypeBreakdown, showActiveDays, 
   });
 
   const cards = [
-    { title: "Total Workouts", value: totals.count.toLocaleString() },
+    { title: "Total Activities", value: totals.count.toLocaleString() },
   ];
   if (!hideDistanceElevation) {
     cards.push({
@@ -327,8 +435,10 @@ function buildSummary(payload, types, years, showTypeBreakdown, showActiveDays, 
 
   if (showTypeBreakdown) {
     types.forEach((type) => {
-      const typeCard = document.createElement("div");
-      typeCard.className = "summary-card";
+      const typeCard = document.createElement("button");
+      typeCard.type = "button";
+      typeCard.className = "summary-card summary-card-action";
+      typeCard.title = `Filter: ${displayType(type)}`;
       const title = document.createElement("div");
       title.className = "summary-title";
       title.textContent = summaryTypeTitle(type);
@@ -343,6 +453,9 @@ function buildSummary(payload, types, years, showTypeBreakdown, showActiveDays, 
       value.appendChild(text);
       typeCard.appendChild(title);
       typeCard.appendChild(value);
+      if (onTypeCardSelect) {
+        typeCard.addEventListener("click", () => onTypeCardSelect(type));
+      }
       summary.appendChild(typeCard);
     });
   }
@@ -428,7 +541,7 @@ function buildHeatmapArea(aggregates, year, units, colors, type, layout, options
 
     const lines = [
       dateStr,
-      `${entry.count} workout${entry.count === 1 ? "" : "s"}`,
+      `${entry.count} ${entry.count === 1 ? "activity" : "activities"}`,
     ];
 
     const showDistanceElevation = (entry.distance || 0) > 0 || (entry.elevation_gain || 0) > 0;
@@ -483,12 +596,7 @@ function buildHeatmapArea(aggregates, year, units, colors, type, layout, options
 
 function buildCard(type, year, aggregates, units, options = {}) {
   const card = document.createElement("div");
-  card.className = "card";
-
-  const title = document.createElement("div");
-  title.className = "card-title";
-  title.textContent = String(year);
-  card.appendChild(title);
+  card.className = "card year-card";
 
   const body = document.createElement("div");
   body.className = "card-body";
@@ -499,7 +607,7 @@ function buildCard(type, year, aggregates, units, options = {}) {
   body.appendChild(heatmapArea);
 
   const stats = document.createElement("div");
-  stats.className = "card-stats";
+  stats.className = "card-stats side-stats-column";
   const totals = {
     count: 0,
     distance: 0,
@@ -514,7 +622,7 @@ function buildCard(type, year, aggregates, units, options = {}) {
   });
 
   const statItems = [
-    { label: "Total Workouts", value: totals.count.toLocaleString() },
+    { label: "Total Activities", value: totals.count.toLocaleString() },
     { label: "Total Time", value: formatDuration(totals.moving_time) },
   ];
 
@@ -553,14 +661,6 @@ function buildEmptyYearCard(type, year, labelOverride) {
   const card = document.createElement("div");
   card.className = "card card-empty-year";
 
-  const row = document.createElement("div");
-  row.className = "empty-year-inline";
-
-  const title = document.createElement("div");
-  title.className = "card-title empty-year-title";
-  title.textContent = String(year);
-  row.appendChild(title);
-
   const placeholder = document.createElement("div");
   placeholder.className = "year-empty-placeholder";
 
@@ -575,9 +675,24 @@ function buildEmptyYearCard(type, year, labelOverride) {
   message.textContent = `no ${String(label).toLowerCase()} activities`;
   placeholder.appendChild(message);
 
-  row.appendChild(placeholder);
-  card.appendChild(row);
+  card.appendChild(placeholder);
   return card;
+}
+
+function buildLabeledCardRow(label, card, kind) {
+  const row = document.createElement("div");
+  row.className = "labeled-card-row";
+  if (kind) {
+    row.classList.add(`labeled-card-row-${kind}`);
+  }
+
+  const title = document.createElement("div");
+  title.className = "labeled-card-title";
+  title.textContent = label;
+
+  row.appendChild(title);
+  row.appendChild(card);
+  return row;
 }
 
 function combineYearAggregates(yearData, types) {
@@ -769,18 +884,13 @@ function buildStatsOverview(payload, types, years, color) {
   const card = document.createElement("div");
   card.className = "card more-stats";
 
-  const title = document.createElement("div");
-  title.className = "card-title more-stats-title";
-  title.textContent = "Workout Frequency";
-  card.appendChild(title);
-
   const body = document.createElement("div");
   body.className = "more-stats-body";
 
   const graphs = document.createElement("div");
   graphs.className = "more-stats-grid";
   const facts = document.createElement("div");
-  facts.className = "more-stats-facts";
+  facts.className = "more-stats-facts side-stats-column";
 
   const yearsDesc = years.slice().sort((a, b) => b - a);
   const emptyColor = DEFAULT_COLORS[0];
@@ -814,7 +924,7 @@ function buildStatsOverview(payload, types, years, color) {
   });
 
   const formatBreakdown = (total, breakdown) => {
-    const lines = [`Total: ${total} workout${total === 1 ? "" : "s"}`];
+    const lines = [`Total: ${total} ${total === 1 ? "activity" : "activities"}`];
     if (types.length > 1) {
       types.forEach((type) => {
         const count = breakdown[type] || 0;
@@ -928,7 +1038,7 @@ function buildStatsOverview(payload, types, years, color) {
   const bestDayIndex = dayTotals.reduce((best, value, index) => (
     value > dayTotals[best] ? index : best
   ), 0);
-  const bestDayLabel = `${DAYS[bestDayIndex]} (${dayTotals[bestDayIndex]} workout${dayTotals[bestDayIndex] === 1 ? "" : "s"})`;
+  const bestDayLabel = `${DAYS[bestDayIndex]} (${dayTotals[bestDayIndex]} ${dayTotals[bestDayIndex] === 1 ? "activity" : "activities"})`;
 
   const monthTotals = monthMatrix.reduce(
     (acc, row) => row.map((value, index) => acc[index] + value),
@@ -937,13 +1047,13 @@ function buildStatsOverview(payload, types, years, color) {
   const bestMonthIndex = monthTotals.reduce((best, value, index) => (
     value > monthTotals[best] ? index : best
   ), 0);
-  const bestMonthLabel = `${MONTHS[bestMonthIndex]} (${monthTotals[bestMonthIndex]} workout${monthTotals[bestMonthIndex] === 1 ? "" : "s"})`;
+  const bestMonthLabel = `${MONTHS[bestMonthIndex]} (${monthTotals[bestMonthIndex]} ${monthTotals[bestMonthIndex] === 1 ? "activity" : "activities"})`;
 
   const bestHourIndex = hourTotals.reduce((best, value, index) => (
     value > hourTotals[best] ? index : best
   ), 0);
   const bestHourLabel = activities.length
-    ? `${formatHourLabel(bestHourIndex)} (${hourTotals[bestHourIndex]} workout${hourTotals[bestHourIndex] === 1 ? "" : "s"})`
+    ? `${formatHourLabel(bestHourIndex)} (${hourTotals[bestHourIndex]} ${hourTotals[bestHourIndex] === 1 ? "activity" : "activities"})`
     : "Not enough time data yet";
 
   const columns = [
@@ -1141,10 +1251,10 @@ function renderStats(payload, types, years, color) {
   const bestDayIndex = dayTotals.reduce((best, value, index) => (
     value > dayTotals[best] ? index : best
   ), 0);
-  const bestDayLabel = `${DAYS[bestDayIndex]} (${dayTotals[bestDayIndex]} workout${dayTotals[bestDayIndex] === 1 ? "" : "s"})`;
+  const bestDayLabel = `${DAYS[bestDayIndex]} (${dayTotals[bestDayIndex]} ${dayTotals[bestDayIndex] === 1 ? "activity" : "activities"})`;
 
   const formatBreakdown = (total, breakdown) => {
-    const lines = [`Total: ${total} workout${total === 1 ? "" : "s"}`];
+    const lines = [`Total: ${total} ${total === 1 ? "activity" : "activities"}`];
     types.forEach((type) => {
       const count = breakdown[type] || 0;
       if (count > 0) {
@@ -1155,7 +1265,7 @@ function renderStats(payload, types, years, color) {
   };
 
   const row1 = buildStatRow();
-  const dayPanel = buildStatPanel("Workout Frequency by Day of Week");
+  const dayPanel = buildStatPanel("Activity Frequency by Day of Week");
   dayPanel.body.appendChild(
     buildYearMatrix(
       yearsDesc,
@@ -1182,10 +1292,10 @@ function renderStats(payload, types, years, color) {
   const bestMonthIndex = monthTotals.reduce((best, value, index) => (
     value > monthTotals[best] ? index : best
   ), 0);
-  const bestMonthLabel = `${MONTHS[bestMonthIndex]} (${monthTotals[bestMonthIndex]} workout${monthTotals[bestMonthIndex] === 1 ? "" : "s"})`;
+  const bestMonthLabel = `${MONTHS[bestMonthIndex]} (${monthTotals[bestMonthIndex]} ${monthTotals[bestMonthIndex] === 1 ? "activity" : "activities"})`;
 
   const row2 = buildStatRow();
-  const monthPanel = buildStatPanel("Workout Frequency by Month");
+  const monthPanel = buildStatPanel("Activity Frequency by Month");
   monthPanel.body.appendChild(
     buildYearMatrix(
       yearsDesc,
@@ -1233,11 +1343,11 @@ function renderStats(payload, types, years, color) {
   const hourLabels = hourTotals.map((_, hour) => (hour % 3 === 0 ? formatHourLabel(hour) : ""));
   const hourTooltipLabels = hourTotals.map((_, hour) => `${formatHourLabel(hour)} (${hour}:00)`);
   const hourSubtitle = activities.length
-    ? `Peak hour: ${formatHourLabel(bestHourIndex)} (${hourTotals[bestHourIndex]} workout${hourTotals[bestHourIndex] === 1 ? "" : "s"})`
+    ? `Peak hour: ${formatHourLabel(bestHourIndex)} (${hourTotals[bestHourIndex]} ${hourTotals[bestHourIndex] === 1 ? "activity" : "activities"})`
     : "Peak hour: not enough time data yet";
 
   const row3 = buildStatRow();
-  const hourPanel = buildStatPanel("Workout Frequency by Time of Day");
+  const hourPanel = buildStatPanel("Activity Frequency by Time of Day");
   if (activities.length) {
     hourPanel.body.appendChild(
       buildYearMatrix(
@@ -1568,7 +1678,13 @@ async function init() {
           : years.slice();
         const emptyLabel = types.map((type) => displayType(type)).join(" + ");
         if (showMoreStats) {
-          list.appendChild(buildStatsOverview(payload, types, cardYears, frequencyColor));
+          list.appendChild(
+            buildLabeledCardRow(
+              "Activity Frequency",
+              buildStatsOverview(payload, types, cardYears, frequencyColor),
+              "frequency",
+            ),
+          );
         }
         cardYears.forEach((year) => {
           const yearData = payload.aggregates?.[String(year)] || {};
@@ -1592,7 +1708,7 @@ async function init() {
               { colorForEntry },
             )
             : buildEmptyYearCard("all", year, emptyLabel);
-          list.appendChild(card);
+          list.appendChild(buildLabeledCardRow(String(year), card, "year"));
         });
         section.appendChild(list);
         heatmaps.appendChild(section);
@@ -1612,7 +1728,13 @@ async function init() {
             ? trimOldestEmptyYears(years, yearTotals)
             : years.slice();
           if (showMoreStats) {
-            list.appendChild(buildStatsOverview(payload, [type], cardYears, frequencyColor));
+            list.appendChild(
+              buildLabeledCardRow(
+                "Activity Frequency",
+                buildStatsOverview(payload, [type], cardYears, frequencyColor),
+                "frequency",
+              ),
+            );
           }
           cardYears.forEach((year) => {
             const aggregates = payload.aggregates?.[String(year)]?.[type] || {};
@@ -1620,7 +1742,7 @@ async function init() {
             const card = total > 0
               ? buildCard(type, year, aggregates, payload.units || { distance: "mi", elevation: "ft" })
               : buildEmptyYearCard(type, year);
-            list.appendChild(card);
+            list.appendChild(buildLabeledCardRow(String(year), card, "year"));
           });
           if (!list.childElementCount) {
             return;
@@ -1636,7 +1758,19 @@ async function init() {
     const showTypeBreakdown = types.length > 1;
     const showActiveDays = types.length > 1 && Boolean(heatmaps);
     const hideDistanceElevation = shouldHideDistanceElevation(payload, types, years);
-    buildSummary(payload, types, years, showTypeBreakdown, showActiveDays, hideDistanceElevation);
+    buildSummary(
+      payload,
+      types,
+      years,
+      showTypeBreakdown,
+      showActiveDays,
+      hideDistanceElevation,
+      (type) => {
+        toggleType(type);
+        update();
+      },
+    );
+    requestAnimationFrame(alignStackedStatsToYAxisLabels);
   }
 
   renderButtons(typeButtons, typeOptions, (value) => {
@@ -1670,6 +1804,12 @@ async function init() {
     }
   });
   update();
+
+  if (document.fonts?.ready) {
+    document.fonts.ready.then(() => {
+      alignStackedStatsToYAxisLabels();
+    }).catch(() => {});
+  }
 
   window.addEventListener("resize", () => {
     if (resizeTimer) {
