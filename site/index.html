@@ -1184,6 +1184,10 @@
           width: max-content;
           max-width: 100%;
         }
+        .year-card .card-stats.side-stats-column {
+          justify-self: start;
+          margin-left: 0;
+        }
         .year-card .card-stats .card-stat {
           width: max-content;
           max-width: 100%;
@@ -1228,7 +1232,7 @@
           grid-row: 2;
           margin-top: 0;
         }
-        .more-stats-facts {
+        .more-stats .more-stats-facts.side-stats-column {
           display: flex;
           flex-direction: row;
           flex-wrap: nowrap;
@@ -1243,6 +1247,7 @@
           align-content: flex-start;
           width: max-content;
           max-width: 100%;
+          transform: none;
           -webkit-text-size-adjust: 100%;
           text-size-adjust: 100%;
         }
@@ -1311,6 +1316,6 @@
 
     <div id="tooltip" class="tooltip"></div>
 
-    <script src="app.js?v=27"></script>
+    <script src="app.js?v=28"></script>
   </body>
 </html>
