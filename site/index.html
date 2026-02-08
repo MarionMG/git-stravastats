@@ -434,8 +434,9 @@
 
       .card-body {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) max-content;
-        gap: 16px;
+        grid-template-columns: max-content minmax(0, 1fr);
+        row-gap: 16px;
+        column-gap: 0;
         align-items: start;
       }
 
@@ -446,9 +447,11 @@
         align-content: start;
       }
 
-      .year-card .side-stats-column {
+      .year-card .side-stats-column,
+      .more-stats .side-stats-column {
         margin-left: 0;
         max-width: 100%;
+        justify-self: center;
       }
 
       .year-card .card-stats.side-stats-column {
@@ -541,8 +544,8 @@
         --label-gap: 0px;
         --label-gap-rotated: 10px;
         display: grid;
-        grid-template-columns: minmax(0, 1fr) max-content;
-        column-gap: var(--more-stats-col-gap);
+        grid-template-columns: max-content minmax(0, 1fr);
+        column-gap: 0;
         row-gap: 0;
         align-items: start;
       }
@@ -601,11 +604,6 @@
         align-content: start;
         justify-content: start;
         justify-self: end;
-      }
-
-      .more-stats .side-stats-column {
-        margin-left: 0;
-        max-width: 100%;
       }
 
       .more-stats-fact-card {
@@ -895,7 +893,7 @@
 
         .year-card .card-stats.side-stats-column {
           align-self: center;
-          justify-self: end;
+          justify-self: center;
           margin-top: 0;
           height: auto;
           align-content: start;
@@ -907,7 +905,7 @@
 
         .more-stats .side-stats-column {
           align-self: center;
-          justify-self: end;
+          justify-self: center;
           margin-top: 0;
           height: auto;
           justify-content: flex-start;
