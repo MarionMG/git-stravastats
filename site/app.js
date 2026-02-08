@@ -96,14 +96,10 @@ function applyStackedStatsOffset(statsColumn, anchorElement) {
     ? firstStatCard.getBoundingClientRect().left
     : statsColumn.getBoundingClientRect().left;
   const anchorLeft = anchorElement.getBoundingClientRect().left;
-  const offset = Math.round(anchorLeft - baseLeft);
+  const offset = Math.max(0, anchorLeft - baseLeft);
 
   statsColumn.style.marginLeft = `${offset}px`;
-  if (offset > 0) {
-    statsColumn.style.maxWidth = `calc(100% - ${offset}px)`;
-  } else {
-    statsColumn.style.maxWidth = "100%";
-  }
+  statsColumn.style.maxWidth = `calc(100% - ${offset}px)`;
 }
 
 function normalizeSummaryStatCardWidths() {
@@ -274,28 +270,6 @@ function syncYearStackingMode() {
   yearLastViewportWidth = viewportWidth;
 }
 
-function syncSectionStackingMode() {
-  if (!heatmaps) return;
-  const desktop = window.matchMedia("(min-width: 721px)").matches;
-  if (!desktop) return;
-
-  heatmaps.querySelectorAll(".type-list").forEach((list) => {
-    const frequencyCard = list.querySelector(".labeled-card-row-frequency .more-stats");
-    const yearCards = Array.from(list.querySelectorAll(".labeled-card-row-year .year-card"));
-    if (!frequencyCard && !yearCards.length) return;
-
-    const shouldStack = frequencyCard?.classList.contains("more-stats-stacked")
-      || yearCards.some((card) => card.classList.contains("year-card-stacked"));
-
-    if (frequencyCard) {
-      frequencyCard.classList.toggle("more-stats-stacked", shouldStack);
-    }
-    yearCards.forEach((card) => {
-      card.classList.toggle("year-card-stacked", shouldStack);
-    });
-  });
-}
-
 function alignFrequencyGraphsToYearCardEdge() {
   if (!heatmaps) return;
   const desktop = window.matchMedia("(min-width: 721px)").matches;
@@ -414,13 +388,11 @@ function alignStackedStatsToYAxisLabels() {
   normalizeSummaryStatCardWidths();
   syncFrequencyStackingMode();
   syncYearStackingMode();
-  syncSectionStackingMode();
   alignFrequencyTitleGapToYearGap();
   alignFrequencyGraphsToYearCardEdge();
   alignFrequencyFactsToYearCardEdge();
   syncFrequencyStackingMode();
   syncYearStackingMode();
-  syncSectionStackingMode();
 
   heatmaps.querySelectorAll(".year-card").forEach((card) => {
     const heatmapArea = card.querySelector(".heatmap-area");
