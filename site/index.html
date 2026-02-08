@@ -33,8 +33,8 @@
         --label-gap-rotated: 10px;
         --year-stats-left-offset: calc(var(--heatmap-axis-col) - 3ch);
         --frequency-stats-left-offset: max(0px, calc(var(--axis-width) - 4ch));
-        --labeled-card-padding-top: 18px;
-        --labeled-card-title-gap: 8px;
+        --labeled-card-padding-top: 12px;
+        --labeled-card-title-gap: 6px;
         --radius: 14px;
         --shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
       }
@@ -869,10 +869,6 @@
           font-size: 14px;
         }
 
-        .year-card .card-body {
-          align-items: center;
-        }
-
         .year-card .heatmap-area {
           transform: translateX(-10px);
         }
@@ -882,10 +878,6 @@
           margin-top: 0;
           height: auto;
           align-content: start;
-        }
-
-        .more-stats {
-          align-items: center;
         }
 
         .more-stats-body {
@@ -907,8 +899,8 @@
 
       @media (max-width: 900px) {
         :root {
-          --labeled-card-padding-top: 14px;
-          --labeled-card-title-gap: 6px;
+          --labeled-card-padding-top: 10px;
+          --labeled-card-title-gap: 4px;
         }
         body {
           padding: 24px 12px;
