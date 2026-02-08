@@ -146,8 +146,33 @@ function applyStackedStatsOffset(statsColumn, anchorLabel) {
   statsColumn.style.maxWidth = `calc(100% - ${offset}px)`;
 }
 
+function normalizeYearStatCardWidths() {
+  if (!heatmaps) return;
+  heatmaps.querySelectorAll(".year-card .card-stats.side-stats-column").forEach((statsColumn) => {
+    const cards = Array.from(statsColumn.querySelectorAll(".card-stat"));
+    if (!cards.length) return;
+
+    cards.forEach((card) => {
+      card.style.width = "";
+      card.style.maxWidth = "";
+    });
+
+    const maxWidth = cards.reduce((max, card) => {
+      const width = Math.ceil(card.getBoundingClientRect().width);
+      return Number.isFinite(width) ? Math.max(max, width) : max;
+    }, 0);
+    if (!maxWidth) return;
+
+    cards.forEach((card) => {
+      card.style.width = `${maxWidth}px`;
+      card.style.maxWidth = `${maxWidth}px`;
+    });
+  });
+}
+
 function alignStackedStatsToYAxisLabels() {
   if (!heatmaps) return;
+  normalizeYearStatCardWidths();
 
   heatmaps.querySelectorAll(".year-card").forEach((card) => {
     const heatmapArea = card.querySelector(".heatmap-area");
