@@ -228,9 +228,16 @@ let yearLastViewportWidth = window.innerWidth;
 let yearStackLocks = new Map();
 let statsWidthLastViewportWidth = window.innerWidth;
 let statsWidthLock = 0;
-let yearDesktopEdgeLastViewportWidth = window.innerWidth;
 let yearDesktopTransformLocks = new Map();
 let yearDesktopInsetLocks = new Map();
+
+function getYearCardLockKey(listIndex, yearCard, yearIndex) {
+  const title = yearCard
+    ?.querySelector(".card-title.labeled-card-title")
+    ?.textContent
+    ?.trim();
+  return `${listIndex}:${title || yearIndex}`;
+}
 
 function normalizeSummaryStatCardWidths() {
   if (!heatmaps) return;
@@ -486,9 +493,9 @@ function alignFrequencyFactsToYearCardEdge() {
   });
 }
 
-function alignYearStatsToFrequencyEdge(narrowing = false) {
+function alignYearStatsToFrequencyEdge() {
   if (!heatmaps) return;
-  const nextLocks = new Map();
+  const nextLocks = new Map(yearDesktopTransformLocks);
 
   const allYearStats = Array.from(
     heatmaps.querySelectorAll(".labeled-card-row-year .year-card .card-stats.side-stats-column"),
@@ -499,7 +506,7 @@ function alignYearStatsToFrequencyEdge(narrowing = false) {
 
   const desktop = window.matchMedia("(min-width: 721px)").matches;
   if (!desktop) {
-    yearDesktopTransformLocks = nextLocks;
+    yearDesktopTransformLocks = new Map();
     return;
   }
 
@@ -523,9 +530,9 @@ function alignYearStatsToFrequencyEdge(narrowing = false) {
       if (yearStacked !== frequencyStacked) return;
       if (yearStacked) return;
 
-      const lockKey = `${listIndex}:${yearIndex}`;
+      const lockKey = getYearCardLockKey(listIndex, yearCard, yearIndex);
       let shift = null;
-      if (narrowing && yearDesktopTransformLocks.has(lockKey)) {
+      if (yearDesktopTransformLocks.has(lockKey)) {
         shift = yearDesktopTransformLocks.get(lockKey);
       } else {
         const currentLeft = statsColumn.getBoundingClientRect().left;
@@ -544,10 +551,10 @@ function alignYearStatsToFrequencyEdge(narrowing = false) {
   yearDesktopTransformLocks = nextLocks;
 }
 
-function applyDesktopStatsRightInset(narrowing = false) {
+function applyDesktopStatsRightInset() {
   if (!heatmaps) return;
   const desktop = window.matchMedia("(min-width: 721px)").matches;
-  const nextYearInsetLocks = new Map();
+  const nextYearInsetLocks = new Map(yearDesktopInsetLocks);
 
   heatmaps.querySelectorAll(".type-list").forEach((list, listIndex) => {
     list.querySelectorAll(".labeled-card-row-year .year-card").forEach((card, yearIndex) => {
@@ -560,9 +567,9 @@ function applyDesktopStatsRightInset(narrowing = false) {
       const stacked = card.classList.contains("year-card-stacked");
       if (!desktop || stacked) return;
 
-      const lockKey = `${listIndex}:${yearIndex}`;
+      const lockKey = getYearCardLockKey(listIndex, card, yearIndex);
       let inset = null;
-      if (narrowing && yearDesktopInsetLocks.has(lockKey)) {
+      if (yearDesktopInsetLocks.has(lockKey)) {
         inset = yearDesktopInsetLocks.get(lockKey);
       } else {
         inset = getDesktopStatsRightInset(statsColumn, body, yLabels);
@@ -575,7 +582,7 @@ function applyDesktopStatsRightInset(narrowing = false) {
       nextYearInsetLocks.set(lockKey, inset);
     });
   });
-  yearDesktopInsetLocks = nextYearInsetLocks;
+  yearDesktopInsetLocks = desktop ? nextYearInsetLocks : new Map();
 
   heatmaps.querySelectorAll(".more-stats").forEach((card) => {
     const statsColumn = card.querySelector(".more-stats-facts.side-stats-column");
@@ -589,8 +596,6 @@ function applyDesktopStatsRightInset(narrowing = false) {
 
 function alignStackedStatsToYAxisLabels() {
   if (!heatmaps) return;
-  const viewportWidth = window.innerWidth;
-  const narrowing = viewportWidth < yearDesktopEdgeLastViewportWidth;
   syncFrequencyStackingMode();
   normalizeSummaryStatCardWidths();
   syncFrequencyStackingMode();
@@ -640,9 +645,8 @@ function alignStackedStatsToYAxisLabels() {
     resetStackedStatsOffset(statsColumn);
   });
 
-  alignYearStatsToFrequencyEdge(narrowing);
-  applyDesktopStatsRightInset(narrowing);
-  yearDesktopEdgeLastViewportWidth = viewportWidth;
+  alignYearStatsToFrequencyEdge();
+  applyDesktopStatsRightInset();
 }
 
 function sundayOnOrBefore(d) {
