@@ -307,6 +307,40 @@ function alignFrequencyFactsToYearCardEdge() {
   });
 }
 
+function alignYearStatsToFrequencyEdge() {
+  if (!heatmaps) return;
+
+  const allYearStats = Array.from(
+    heatmaps.querySelectorAll(".labeled-card-row-year .year-card .card-stats.side-stats-column"),
+  );
+  allYearStats.forEach((statsColumn) => {
+    statsColumn.style.transform = "";
+  });
+
+  const desktopWide = window.matchMedia("(min-width: 901px)").matches;
+  if (!desktopWide) return;
+
+  heatmaps.querySelectorAll(".type-list").forEach((list) => {
+    const frequencyFacts = list.querySelector(
+      ".labeled-card-row-frequency .more-stats:not(.more-stats-stacked) .more-stats-facts.side-stats-column",
+    );
+    if (!frequencyFacts) return;
+
+    const targetLeft = frequencyFacts.getBoundingClientRect().left;
+    if (!Number.isFinite(targetLeft)) return;
+
+    list.querySelectorAll(".labeled-card-row-year .year-card .card-stats.side-stats-column").forEach((statsColumn) => {
+      const currentLeft = statsColumn.getBoundingClientRect().left;
+      if (!Number.isFinite(currentLeft)) return;
+
+      const shift = Math.round(targetLeft - currentLeft);
+      if (shift !== 0) {
+        statsColumn.style.transform = `translateX(${shift}px)`;
+      }
+    });
+  });
+}
+
 function alignStackedStatsToYAxisLabels() {
   if (!heatmaps) return;
   syncFrequencyStackingMode();
@@ -315,6 +349,7 @@ function alignStackedStatsToYAxisLabels() {
   alignFrequencyTitleGapToYearGap();
   alignFrequencyGraphsToYearCardEdge();
   alignFrequencyFactsToYearCardEdge();
+  alignYearStatsToFrequencyEdge();
   syncFrequencyStackingMode();
 
   heatmaps.querySelectorAll(".year-card").forEach((card) => {
