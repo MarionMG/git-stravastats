@@ -223,8 +223,6 @@ let yearLastViewportWidth = window.innerWidth;
 let yearStackLocks = new Map();
 let statsWidthLastViewportWidth = window.innerWidth;
 let statsWidthLock = 0;
-let yearStatsEdgeLastViewportWidth = window.innerWidth;
-let yearStatsEdgeLocks = new Map();
 
 function normalizeSummaryStatCardWidths() {
   if (!heatmaps) return;
@@ -482,9 +480,6 @@ function alignFrequencyFactsToYearCardEdge() {
 
 function alignYearStatsToFrequencyEdge() {
   if (!heatmaps) return;
-  const viewportWidth = window.innerWidth;
-  const narrowing = viewportWidth <= yearStatsEdgeLastViewportWidth;
-  const nextLocks = new Map();
 
   const allYearStats = Array.from(
     heatmaps.querySelectorAll(".labeled-card-row-year .year-card .card-stats.side-stats-column"),
@@ -494,13 +489,9 @@ function alignYearStatsToFrequencyEdge() {
   });
 
   const desktop = window.matchMedia("(min-width: 721px)").matches;
-  if (!desktop) {
-    yearStatsEdgeLocks = nextLocks;
-    yearStatsEdgeLastViewportWidth = viewportWidth;
-    return;
-  }
+  if (!desktop) return;
 
-  heatmaps.querySelectorAll(".type-list").forEach((list, listIndex) => {
+  heatmaps.querySelectorAll(".type-list").forEach((list) => {
     const frequencyCard = list.querySelector(".labeled-card-row-frequency .more-stats");
     const frequencyFacts = list.querySelector(
       ".labeled-card-row-frequency .more-stats .more-stats-facts.side-stats-column",
@@ -513,32 +504,21 @@ function alignYearStatsToFrequencyEdge() {
     const targetLeft = frequencyFacts.getBoundingClientRect().left;
     if (!Number.isFinite(targetLeft)) return;
 
-    list.querySelectorAll(".labeled-card-row-year .year-card").forEach((yearCard, yearIndex) => {
+    list.querySelectorAll(".labeled-card-row-year .year-card").forEach((yearCard) => {
       const statsColumn = yearCard.querySelector(".card-stats.side-stats-column");
       if (!statsColumn) return;
       const yearStacked = yearCard.classList.contains("year-card-stacked");
       if (yearStacked !== frequencyStacked) return;
 
-      const lockKey = `${listIndex}:${yearIndex}`;
-      let shift = null;
-      // Keep desktop year stats fixed while narrowing; unlock on widen/relayout.
-      if (narrowing && yearStatsEdgeLocks.has(lockKey)) {
-        shift = yearStatsEdgeLocks.get(lockKey);
-      } else {
-        const currentLeft = statsColumn.getBoundingClientRect().left;
-        if (!Number.isFinite(currentLeft)) return;
-        shift = Math.round(targetLeft - currentLeft);
-      }
-      if (!Number.isFinite(shift)) return;
+      const currentLeft = statsColumn.getBoundingClientRect().left;
+      if (!Number.isFinite(currentLeft)) return;
+
+      const shift = Math.round(targetLeft - currentLeft);
       if (shift !== 0) {
         statsColumn.style.transform = `translateX(${shift}px)`;
       }
-      nextLocks.set(lockKey, shift);
     });
   });
-
-  yearStatsEdgeLocks = nextLocks;
-  yearStatsEdgeLastViewportWidth = viewportWidth;
 }
 
 function applyDesktopStatsRightInset() {
