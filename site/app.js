@@ -149,9 +149,6 @@ function applyStackedStatsOffset(statsColumn, anchorLabel) {
 function normalizeSummaryStatCardWidths() {
   if (!heatmaps) return;
 
-  const columns = Array.from(
-    heatmaps.querySelectorAll(".year-card .card-stats.side-stats-column, .more-stats-facts.side-stats-column"),
-  );
   const yearCards = Array.from(
     heatmaps.querySelectorAll(".year-card .card-stats.side-stats-column .card-stat"),
   );
@@ -160,12 +157,6 @@ function normalizeSummaryStatCardWidths() {
   );
   const cards = [...yearCards, ...frequencyCards];
   if (!cards.length) return;
-
-  columns.forEach((column) => {
-    column.style.gridTemplateColumns = "";
-    column.style.width = "";
-    column.style.maxWidth = "";
-  });
 
   cards.forEach((card) => {
     card.style.width = "";
@@ -182,17 +173,37 @@ function normalizeSummaryStatCardWidths() {
   }, 0);
   if (!maxWidth) return;
 
-  cards.forEach((card) => {
-    card.style.width = `${maxWidth}px`;
-    card.style.maxWidth = `${maxWidth}px`;
-  });
+  const desktopCards = Array.from(
+    heatmaps.querySelectorAll(".card.year-card, .card.more-stats"),
+  );
 
-  const sharedColumnWidth = (maxWidth * 2) + 8;
-  columns.forEach((column) => {
-    column.style.gridTemplateColumns = `repeat(2, ${maxWidth}px)`;
-    column.style.width = `${sharedColumnWidth}px`;
-    column.style.maxWidth = `${sharedColumnWidth}px`;
-  });
+  let targetWidth = maxWidth;
+  const minWidth = 128;
+
+  const applyWidth = (width) => {
+    cards.forEach((card) => {
+      card.style.width = `${width}px`;
+      card.style.maxWidth = `${width}px`;
+    });
+  };
+
+  for (let i = 0; i < 8; i += 1) {
+    applyWidth(targetWidth);
+    const overflow = desktopCards.reduce((max, card) => (
+      Math.max(max, Math.ceil(card.scrollWidth - card.clientWidth))
+    ), 0);
+    if (overflow <= 0) {
+      break;
+    }
+    const next = targetWidth - Math.ceil(overflow / 2);
+    if (next <= minWidth) {
+      targetWidth = minWidth;
+      break;
+    }
+    targetWidth = next;
+  }
+
+  applyWidth(targetWidth);
 }
 
 function alignFrequencyTitleGapToYearGap() {
@@ -242,16 +253,22 @@ function alignFrequencyGraphsToYearCardEdge() {
     while (referenceRow && !referenceRow.classList.contains("labeled-card-row-year")) {
       referenceRow = referenceRow.nextElementSibling;
     }
-    const referenceYearCard = referenceRow?.querySelector(".card.year-card");
-    if (!referenceYearCard) return;
+    const referenceYearGraph = referenceRow?.querySelector(".card.year-card .heatmap-area");
+    if (!referenceYearGraph) return;
 
     const thirdRight = thirdGraph.getBoundingClientRect().right;
-    const yearRight = referenceYearCard.getBoundingClientRect().right;
-    const overflow = Math.ceil(thirdRight - yearRight);
-    if (overflow <= 0) return;
+    const targetRight = referenceYearGraph.getBoundingClientRect().right;
+    const delta = Math.round(targetRight - thirdRight);
 
-    const secondShift = -Math.ceil(overflow / 2);
-    const thirdShift = -overflow;
+    let secondShift = Math.round(delta / 2);
+    let thirdShift = delta;
+
+    const cardOverflow = Math.ceil(frequencyCard.scrollWidth - frequencyCard.clientWidth);
+    if (cardOverflow > 0) {
+      secondShift -= Math.ceil(cardOverflow / 2);
+      thirdShift -= cardOverflow;
+    }
+
     frequencyCard.style.setProperty("--more-stats-second-col-shift", `${secondShift}px`);
     frequencyCard.style.setProperty("--more-stats-third-col-shift", `${thirdShift}px`);
   });
