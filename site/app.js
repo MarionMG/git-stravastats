@@ -103,13 +103,16 @@ function normalizeSummaryStatCardWidths() {
   const yearCards = Array.from(
     heatmaps.querySelectorAll(".year-card .card-stats.side-stats-column .card-stat"),
   );
-  const frequencyCards = Array.from(
+  const allFrequencyCards = Array.from(
     heatmaps.querySelectorAll(".more-stats-facts.side-stats-column .more-stats-fact-card"),
   );
+  const frequencyCards = allFrequencyCards.filter((card) => (
+    !card.closest(".more-stats")?.classList.contains("more-stats-stacked")
+  ));
   const cards = [...yearCards, ...frequencyCards];
   if (!cards.length) return;
 
-  cards.forEach((card) => {
+  [...yearCards, ...allFrequencyCards].forEach((card) => {
     card.style.width = "";
     card.style.maxWidth = "";
   });
@@ -188,28 +191,27 @@ function alignFrequencyTitleGapToYearGap() {
 function syncFrequencyStackingMode() {
   if (!heatmaps) return;
   const desktop = window.matchMedia("(min-width: 721px)").matches;
-  const minGap = 8;
 
   heatmaps.querySelectorAll(".more-stats").forEach((card) => {
     const body = card.querySelector(".more-stats-body");
     const facts = card.querySelector(".more-stats-facts.side-stats-column");
     if (!body || !facts) return;
 
+    card.style.setProperty("--more-stats-facts-shift", "0px");
+    card.style.setProperty("--more-stats-second-col-shift", "0px");
+    card.style.setProperty("--more-stats-third-col-shift", "0px");
     card.classList.remove("more-stats-stacked");
     if (!desktop) {
-      card.style.setProperty("--more-stats-facts-shift", "0px");
       return;
     }
 
-    const bodyRect = body.getBoundingClientRect();
-    const factsRect = facts.getBoundingClientRect();
-    const cardRect = card.getBoundingClientRect();
-    const overlapsGraph = factsRect.left < bodyRect.right + minGap;
-    const overflowsCard = factsRect.right > cardRect.right - 1;
+    const sideGap = readCssVar("--stats-column-gap", 12, card);
+    const requiredWidth = Math.ceil(body.scrollWidth + sideGap + facts.scrollWidth);
+    const availableWidth = Math.floor(card.clientWidth);
+    const needsStack = requiredWidth > availableWidth;
 
-    if (overlapsGraph || overflowsCard) {
+    if (needsStack) {
       card.classList.add("more-stats-stacked");
-      card.style.setProperty("--more-stats-facts-shift", "0px");
     }
   });
 }
@@ -290,9 +292,10 @@ function alignFrequencyFactsToYearCardEdge() {
 
 function alignStackedStatsToYAxisLabels() {
   if (!heatmaps) return;
-  normalizeSummaryStatCardWidths();
-  alignFrequencyTitleGapToYearGap();
   syncFrequencyStackingMode();
+  normalizeSummaryStatCardWidths();
+  syncFrequencyStackingMode();
+  alignFrequencyTitleGapToYearGap();
   alignFrequencyGraphsToYearCardEdge();
   alignFrequencyFactsToYearCardEdge();
   syncFrequencyStackingMode();
