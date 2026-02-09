@@ -35,13 +35,13 @@ This is the fastest path, but it requires a local clone and GitHub CLI (`gh`) au
    gh auth login
    ```
 
-6. Run:
+6. Run the following, replacing `CLIENT_ID` with the `Client ID` value obtained in step 3 above:
 
    ```bash
    python3 scripts/setup_auth.py --client-id CLIENT_ID
    ```
 
-   When prompted, paste your `Client Secret` value (it is hidden input) and press enter.
+   When prompted, paste your `Client Secret` obtained from step 3 above (it is hidden input) and press enter.
 
    The script will automatically:
    - open Strava OAuth in your browser
