@@ -2114,7 +2114,7 @@ async function init() {
     if (!payload.types.includes(value)) return;
     if (allTypesMode) {
       allTypesMode = false;
-      selectedTypes = new Set([value]);
+      selectedTypes = new Set(payload.types.filter((type) => type !== value));
       return;
     }
     if (selectedTypes.has(value)) {
@@ -2137,7 +2137,7 @@ async function init() {
     if (!Number.isFinite(year) || !currentVisibleYears.includes(year)) return;
     if (allYearsMode) {
       allYearsMode = false;
-      selectedYears = new Set([year]);
+      selectedYears = new Set(currentVisibleYears.filter((visibleYear) => visibleYear !== year));
       return;
     }
     if (selectedYears.has(year)) {
