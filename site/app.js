@@ -1766,6 +1766,9 @@ function buildStatsOverview(payload, types, years, color) {
       if (!button) return;
       const active = activeFactKey === item.key;
       button.classList.toggle("active", active);
+      if (active) {
+        button.classList.remove("fact-glow-cleared");
+      }
       button.setAttribute("aria-pressed", active ? "true" : "false");
     });
   };
@@ -1863,10 +1866,20 @@ function buildStatsOverview(payload, types, years, color) {
     factCard.appendChild(value);
     if (item.filterable) {
       factCard.addEventListener("click", () => {
-        activeFactKey = activeFactKey === item.key ? null : item.key;
+        const clearing = activeFactKey === item.key;
+        activeFactKey = clearing ? null : item.key;
+        if (clearing) {
+          factCard.classList.add("fact-glow-cleared");
+          factCard.blur();
+        } else {
+          factCard.classList.remove("fact-glow-cleared");
+        }
         renderFactButtonState();
         renderFrequencyGraphs();
         requestAnimationFrame(alignStackedStatsToYAxisLabels);
+      });
+      factCard.addEventListener("pointerleave", () => {
+        factCard.classList.remove("fact-glow-cleared");
       });
     }
     factButtons.set(item.key, factCard);

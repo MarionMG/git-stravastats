@@ -683,18 +683,22 @@
         transition: border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
       }
 
-      .more-stats-fact-button:hover:not(:disabled) {
-        border-color: rgba(148, 163, 184, 0.6);
-      }
-
-      .more-stats-fact-button.active {
+      .more-stats-fact-button:hover:not(:disabled),
+      .more-stats-fact-button.active,
+      .more-stats-fact-button:focus-visible {
         border-color: var(--accent);
         box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.4);
       }
 
       .more-stats-fact-button:focus-visible {
         outline: none;
-        border-color: var(--accent);
+      }
+
+      .more-stats-fact-button.fact-glow-cleared,
+      .more-stats-fact-button.fact-glow-cleared:hover:not(:disabled),
+      .more-stats-fact-button.fact-glow-cleared:focus-visible {
+        border-color: rgba(148, 163, 184, 0.2);
+        box-shadow: none;
       }
 
       .more-stats-fact-button:disabled {
