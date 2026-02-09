@@ -1468,6 +1468,13 @@ function getFrequencyColor(types, allYearsSelected) {
   return types.length ? getColors(types[0])[4] : MULTI_TYPE_COLOR;
 }
 
+function getActivityFrequencyCardColor(types) {
+  if (types.length === 1) {
+    return getColors(types[0])[4];
+  }
+  return MULTI_TYPE_COLOR;
+}
+
 function buildStatRow() {
   const row = document.createElement("div");
   row.className = "card stats-row";
@@ -2442,6 +2449,7 @@ async function init() {
     const years = selectedYearsList(visibleYears);
     years.sort((a, b) => b - a);
     const frequencyColor = getFrequencyColor(types, allYearsSelected);
+    const frequencyCardColor = getActivityFrequencyCardColor(types);
     const showCombinedTypes = types.length > 1;
     const allAvailableTypesSelected = types.length === payload.types.length;
 
@@ -2494,7 +2502,7 @@ async function init() {
           list.appendChild(
             buildLabeledCardRow(
               "Activity Frequency",
-              buildStatsOverview(payload, types, cardYears, frequencyColor),
+              buildStatsOverview(payload, types, cardYears, frequencyCardColor),
               "frequency",
             ),
           );
@@ -2547,7 +2555,7 @@ async function init() {
             list.appendChild(
               buildLabeledCardRow(
                 "Activity Frequency",
-                buildStatsOverview(payload, [type], cardYears, frequencyColor),
+                buildStatsOverview(payload, [type], cardYears, frequencyCardColor),
                 "frequency",
               ),
             );
