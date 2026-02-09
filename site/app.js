@@ -2124,6 +2124,10 @@ async function init() {
       return;
     }
     selectedTypes.add(value);
+    if (selectedTypes.size === payload.types.length) {
+      allTypesMode = true;
+      selectedTypes.clear();
+    }
   }
 
   function toggleYear(value) {
@@ -2147,6 +2151,10 @@ async function init() {
       return;
     }
     selectedYears.add(year);
+    if (selectedYears.size === currentVisibleYears.length) {
+      allYearsMode = true;
+      selectedYears.clear();
+    }
   }
 
   function getTypeMenuText(types, allTypesSelected) {
