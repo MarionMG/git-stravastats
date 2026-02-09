@@ -447,11 +447,11 @@ function alignFrequencyGraphsToYearCardEdge() {
 
     const thirdRight = thirdGraph.getBoundingClientRect().right;
     const targetRight = referenceYearGraph.getBoundingClientRect().right;
-    const delta = Math.round(targetRight - thirdRight);
+    const delta = targetRight - thirdRight;
+    if (!Number.isFinite(delta)) return;
 
-    // Never shift columns left during resize transitions; allow horizontal scrolling instead.
-    const secondShift = Math.max(0, Math.round(delta / 2));
-    const thirdShift = Math.max(0, delta);
+    const secondShift = Math.round((delta / 2) * 1000) / 1000;
+    const thirdShift = Math.round(delta * 1000) / 1000;
 
     frequencyCard.style.setProperty("--more-stats-second-col-shift", `${secondShift}px`);
     frequencyCard.style.setProperty("--more-stats-third-col-shift", `${thirdShift}px`);
@@ -484,7 +484,7 @@ function alignFrequencyFactsToYearCardEdge() {
     const referenceStats = referenceRow?.querySelector(".card.year-card .card-stats.side-stats-column");
     if (!referenceStats) return;
 
-    const targetWidth = Math.ceil(referenceStats.getBoundingClientRect().width);
+    const targetWidth = referenceStats.getBoundingClientRect().width;
     if (targetWidth > 0) {
       factsColumn.style.width = `${targetWidth}px`;
       factsColumn.style.maxWidth = `${targetWidth}px`;
