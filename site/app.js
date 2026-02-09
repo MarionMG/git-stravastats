@@ -291,6 +291,7 @@ function normalizeSummaryStatCardWidths() {
 
 function alignFrequencyTitleGapToYearGap() {
   if (!heatmaps) return;
+  const desktop = window.matchMedia("(min-width: 721px)").matches;
 
   const referenceYearCard = heatmaps.querySelector(".year-card");
   if (!referenceYearCard) return;
@@ -309,6 +310,9 @@ function alignFrequencyTitleGapToYearGap() {
     if (!title || !firstLabel || !body) return;
 
     body.style.marginTop = "0px";
+    if (desktop && !frequencyCard.classList.contains("more-stats-stacked")) {
+      return;
+    }
     const currentGap = firstLabel.getBoundingClientRect().top - title.getBoundingClientRect().bottom;
     if (!Number.isFinite(currentGap)) return;
 
