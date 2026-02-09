@@ -596,7 +596,6 @@ function applyDesktopStatsRightInset(narrowing = false) {
 function alignStackedStatsToYAxisLabels() {
   if (!heatmaps) return;
   const viewportWidth = window.innerWidth;
-  const narrowing = viewportWidth < yearDesktopEdgeLastViewportWidth;
   syncFrequencyStackingMode();
   normalizeSummaryStatCardWidths();
   syncFrequencyStackingMode();
@@ -646,8 +645,15 @@ function alignStackedStatsToYAxisLabels() {
     resetStackedStatsOffset(statsColumn);
   });
 
-  alignYearStatsToFrequencyEdge(narrowing);
-  applyDesktopStatsRightInset(narrowing);
+  heatmaps.querySelectorAll(".labeled-card-row-year .year-card .card-stats.side-stats-column").forEach((statsColumn) => {
+    statsColumn.style.transform = "";
+    resetDesktopRightInset(statsColumn);
+  });
+  heatmaps.querySelectorAll(".more-stats .more-stats-facts.side-stats-column").forEach((statsColumn) => {
+    resetDesktopRightInset(statsColumn);
+  });
+  yearDesktopTransformLocks = new Map();
+  yearDesktopInsetLocks = new Map();
   yearDesktopEdgeLastViewportWidth = viewportWidth;
 }
 
