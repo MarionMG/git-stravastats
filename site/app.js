@@ -1032,7 +1032,9 @@ function buildSummary(
   showActiveDays,
   typeCardTypes,
   activeTypeCards,
+  hoverClearedType,
   onTypeCardSelect,
+  onTypeCardHoverReset,
 ) {
   summary.innerHTML = "";
 
@@ -1117,6 +1119,9 @@ function buildSummary(
       typeCard.className = "summary-card summary-card-action";
       const isActiveTypeCard = Boolean(activeTypeCards && activeTypeCards.has(type));
       typeCard.classList.toggle("active", isActiveTypeCard);
+      if (!isActiveTypeCard && hoverClearedType === type) {
+        typeCard.classList.add("summary-glow-cleared");
+      }
       typeCard.setAttribute("aria-pressed", isActiveTypeCard ? "true" : "false");
       typeCard.title = `Filter: ${displayType(type)}`;
       const title = document.createElement("div");
@@ -1133,8 +1138,16 @@ function buildSummary(
       value.appendChild(text);
       typeCard.appendChild(title);
       typeCard.appendChild(value);
+      if (onTypeCardHoverReset) {
+        typeCard.addEventListener("pointerleave", () => {
+          if (typeCard.classList.contains("summary-glow-cleared")) {
+            typeCard.classList.remove("summary-glow-cleared");
+          }
+          onTypeCardHoverReset(type);
+        });
+      }
       if (onTypeCardSelect) {
-        typeCard.addEventListener("click", () => onTypeCardSelect(type));
+        typeCard.addEventListener("click", () => onTypeCardSelect(type, isActiveTypeCard));
       }
       summary.appendChild(typeCard);
     });
@@ -2289,6 +2302,7 @@ async function init() {
   let allYearsMode = true;
   let selectedYears = new Set();
   let currentVisibleYears = payload.years.slice().sort((a, b) => b - a);
+  let hoverClearedSummaryType = null;
 
   function areAllTypesSelected() {
     return allTypesMode;
@@ -2667,9 +2681,16 @@ async function init() {
       showActiveDays,
       payload.types,
       activeSummaryTypeCards,
-      (type) => {
+      hoverClearedSummaryType,
+      (type, wasActiveTypeCard) => {
+        hoverClearedSummaryType = wasActiveTypeCard ? type : null;
         toggleTypeFromSummaryCard(type);
         update();
+      },
+      (type) => {
+        if (hoverClearedSummaryType === type) {
+          hoverClearedSummaryType = null;
+        }
       },
     );
     requestAnimationFrame(alignStackedStatsToYAxisLabels);
