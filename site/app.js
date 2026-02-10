@@ -1030,6 +1030,7 @@ function buildSummary(
   showTypeBreakdown,
   showActiveDays,
   hideDistanceElevation,
+  typeCardTypes,
   activeTypeCards,
   onTypeCardSelect,
 ) {
@@ -1042,24 +1043,35 @@ function buildSummary(
     elevation: 0,
   };
   const typeTotals = {};
+  const selectedTypeSet = new Set(types);
+  const typeCardsList = Array.isArray(typeCardTypes) && typeCardTypes.length
+    ? typeCardTypes.slice()
+    : types.slice();
+  const typeCardSet = new Set(typeCardsList);
   const activeDays = new Set();
 
   Object.entries(payload.aggregates || {}).forEach(([year, yearData]) => {
     if (!years.includes(Number(year))) return;
     Object.entries(yearData || {}).forEach(([type, entries]) => {
-      if (!types.includes(type)) return;
-      if (!typeTotals[type]) {
+      const includeTotals = selectedTypeSet.has(type);
+      const includeTypeCardCount = typeCardSet.has(type);
+      if (!includeTotals && !includeTypeCardCount) return;
+      if (includeTypeCardCount && !typeTotals[type]) {
         typeTotals[type] = { count: 0 };
       }
       Object.entries(entries || {}).forEach(([dateStr, entry]) => {
-        if ((entry.count || 0) > 0) {
+        if (includeTotals && (entry.count || 0) > 0) {
           activeDays.add(dateStr);
         }
-        totals.count += entry.count || 0;
-        totals.distance += entry.distance || 0;
-        totals.moving_time += entry.moving_time || 0;
-        totals.elevation += entry.elevation_gain || 0;
-        typeTotals[type].count += entry.count || 0;
+        if (includeTotals) {
+          totals.count += entry.count || 0;
+          totals.distance += entry.distance || 0;
+          totals.moving_time += entry.moving_time || 0;
+          totals.elevation += entry.elevation_gain || 0;
+        }
+        if (includeTypeCardCount) {
+          typeTotals[type].count += entry.count || 0;
+        }
       });
     });
   });
@@ -1097,7 +1109,7 @@ function buildSummary(
   });
 
   if (showTypeBreakdown) {
-    types.forEach((type) => {
+    typeCardsList.forEach((type) => {
       const typeCard = document.createElement("button");
       typeCard.type = "button";
       typeCard.className = "summary-card summary-card-action";
@@ -2658,8 +2670,8 @@ async function init() {
 
     renderStats(payload, types, years, frequencyColor);
 
-    const showTypeBreakdown = types.length > 0;
-    const showActiveDays = types.length > 1 && Boolean(heatmaps);
+    const showTypeBreakdown = payload.types.length > 0;
+    const showActiveDays = Boolean(heatmaps);
     const hideDistanceElevation = shouldHideDistanceElevation(payload, types, years);
     buildSummary(
       payload,
@@ -2668,6 +2680,7 @@ async function init() {
       showTypeBreakdown,
       showActiveDays,
       hideDistanceElevation,
+      payload.types,
       activeSummaryTypeCards,
       (type) => {
         toggleTypeFromSummaryCard(type);
