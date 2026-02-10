@@ -1769,14 +1769,14 @@ function buildStatsOverview(payload, types, years, color) {
     },
   ];
 
-  const activeFactKeys = new Set();
+  let activeFactKey = null;
   const factButtons = new Map();
 
   const renderFactButtonState = () => {
     factItems.forEach((item) => {
       const button = factButtons.get(item.key);
       if (!button) return;
-      const active = activeFactKeys.has(item.key);
+      const active = activeFactKey === item.key;
       button.classList.toggle("active", active);
       if (active) {
         button.classList.remove("fact-glow-cleared");
@@ -1786,13 +1786,8 @@ function buildStatsOverview(payload, types, years, color) {
   };
 
   const renderFrequencyGraphs = () => {
-    const activeFilters = factItems
-      .filter((item) => activeFactKeys.has(item.key))
-      .map((item) => item.filter);
-    const filterFn = activeFilters.length
-      ? (activity) => activeFilters.every((predicate) => predicate(activity))
-      : undefined;
-    const matrixData = buildFrequencyData(filterFn);
+    const activeFact = factItems.find((item) => item.key === activeFactKey) || null;
+    const matrixData = buildFrequencyData(activeFact?.filter);
 
     dayPanel.body.innerHTML = "";
     dayPanel.body.appendChild(
@@ -1883,12 +1878,8 @@ function buildStatsOverview(payload, types, years, color) {
     factCard.appendChild(value);
     if (item.filterable) {
       factCard.addEventListener("click", () => {
-        const clearing = activeFactKeys.has(item.key);
-        if (clearing) {
-          activeFactKeys.delete(item.key);
-        } else {
-          activeFactKeys.add(item.key);
-        }
+        const clearing = activeFactKey === item.key;
+        activeFactKey = clearing ? null : item.key;
         if (clearing) {
           factCard.classList.add("fact-glow-cleared");
           factCard.blur();
