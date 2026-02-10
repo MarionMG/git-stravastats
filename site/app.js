@@ -2,6 +2,7 @@ const DEFAULT_COLORS = ["#1f2937", "#1f2937", "#1f2937", "#1f2937", "#1f2937"];
 const MULTI_TYPE_COLOR = "#b967ff";
 const STAT_HEAT_COLOR = "#05ffa1";
 const FALLBACK_VAPORWAVE = ["#f15bb5", "#fee440", "#00bbf9", "#00f5d4", "#9b5de5", "#fb5607", "#ffbe0b", "#72efdd"];
+const STAT_PLACEHOLDER = "- - -";
 let TYPE_META = {};
 let OTHER_BUCKET = "OtherSports";
 
@@ -1029,7 +1030,6 @@ function buildSummary(
   years,
   showTypeBreakdown,
   showActiveDays,
-  hideDistanceElevation,
   typeCardTypes,
   activeTypeCards,
   onTypeCardSelect,
@@ -1078,18 +1078,20 @@ function buildSummary(
 
   const cards = [
     { title: "Total Activities", value: totals.count.toLocaleString() },
-  ];
-  if (!hideDistanceElevation) {
-    cards.push({
+    {
       title: "Total Distance",
-      value: formatDistance(totals.distance, payload.units || { distance: "mi" }),
-    });
-    cards.push({
+      value: totals.distance > 0
+        ? formatDistance(totals.distance, payload.units || { distance: "mi" })
+        : STAT_PLACEHOLDER,
+    },
+    { title: "Total Time", value: formatDuration(totals.moving_time) },
+    {
       title: "Total Elevation",
-      value: formatElevation(totals.elevation, payload.units || { elevation: "ft" }),
-    });
-  }
-  cards.push({ title: "Total Time", value: formatDuration(totals.moving_time) });
+      value: totals.elevation > 0
+        ? formatElevation(totals.elevation, payload.units || { elevation: "ft" })
+        : STAT_PLACEHOLDER,
+    },
+  ];
   if (showActiveDays) {
     cards.push({ title: "Active Days", value: activeDays.size.toLocaleString() });
   }
@@ -1306,20 +1308,20 @@ function buildCard(type, year, aggregates, units, options = {}) {
 
   const statItems = [
     { label: "Total Activities", value: totals.count.toLocaleString() },
-    { label: "Total Time", value: formatDuration(totals.moving_time) },
-  ];
-
-  const hideDistanceElevation = totals.distance <= 0 && totals.elevation <= 0;
-  if (!hideDistanceElevation) {
-    statItems.splice(1, 0, {
+    {
       label: "Total Distance",
-      value: formatDistance(totals.distance, units || { distance: "mi" }),
-    });
-    statItems.push({
+      value: totals.distance > 0
+        ? formatDistance(totals.distance, units || { distance: "mi" })
+        : STAT_PLACEHOLDER,
+    },
+    { label: "Total Time", value: formatDuration(totals.moving_time) },
+    {
       label: "Total Elevation",
-      value: formatElevation(totals.elevation, units || { elevation: "ft" }),
-    });
-  }
+      value: totals.elevation > 0
+        ? formatElevation(totals.elevation, units || { elevation: "ft" })
+        : STAT_PLACEHOLDER,
+    },
+  ];
 
   statItems.forEach((item) => {
     const stat = document.createElement("div");
@@ -1451,21 +1453,6 @@ function getFilteredActivities(payload, types, years) {
   return activities.filter((activity) => (
     typeSet.has(activity.type) && yearSet.has(Number(activity.year))
   ));
-}
-
-function shouldHideDistanceElevation(payload, types, years) {
-  for (const year of years) {
-    const yearData = payload.aggregates?.[String(year)] || {};
-    for (const type of types) {
-      const entries = yearData?.[type] || {};
-      for (const entry of Object.values(entries)) {
-        if ((entry.distance || 0) > 0 || (entry.elevation_gain || 0) > 0) {
-          return false;
-        }
-      }
-    }
-  }
-  return true;
 }
 
 function getTypeYearTotals(payload, type, years) {
@@ -2672,14 +2659,12 @@ async function init() {
 
     const showTypeBreakdown = payload.types.length > 0;
     const showActiveDays = Boolean(heatmaps);
-    const hideDistanceElevation = shouldHideDistanceElevation(payload, types, years);
     buildSummary(
       payload,
       types,
       years,
       showTypeBreakdown,
       showActiveDays,
-      hideDistanceElevation,
       payload.types,
       activeSummaryTypeCards,
       (type) => {
