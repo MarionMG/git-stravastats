@@ -5144,6 +5144,13 @@
       "subtype": "Run",
       "type": "Run",
       "year": 2026
+    },
+    {
+      "date": "2026-02-18",
+      "hour": 6,
+      "subtype": "Swim",
+      "type": "Swim",
+      "year": 2026
     }
   ],
   "aggregates": {
@@ -11518,6 +11525,15 @@
           "distance": 792.7,
           "elevation_gain": 0.0,
           "moving_time": 1203.0
+        },
+        "2026-02-18": {
+          "activity_ids": [
+            17430401102
+          ],
+          "count": 1,
+          "distance": 2225.0,
+          "elevation_gain": 0.0,
+          "moving_time": 2704.0
         }
       },
       "WalkHike": {
@@ -11607,7 +11623,7 @@
       }
     }
   },
-  "generated_at": "2026-02-17T16:00:37.571375+00:00",
+  "generated_at": "2026-02-18T16:00:13.583182+00:00",
   "other_bucket": "OtherSports",
   "type_meta": {
     "Climbing": {
